@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FaMicrophone } from 'react-icons/fa'; // Import the microphone icon
+import React, { useState, useEffect, useRef } from 'react';
+import { FaMicrophone, FaPaperPlane } from 'react-icons/fa';
 
 function Chat({ onNavigate, onSpeak }) {
   const [inputText, setInputText] = useState('');
@@ -7,7 +7,14 @@ function Chat({ onNavigate, onSpeak }) {
     { text: "Hello, farmer! How can I help you today?", sender: 'ai' }
   ]);
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
+  // Auto-scroll to bottom when messages update
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Speak first AI message
   useEffect(() => {
     if (messages.length > 0 && messages[0].sender === 'ai') {
       onSpeak(messages[0].text);
@@ -17,7 +24,7 @@ function Chat({ onNavigate, onSpeak }) {
   const handleSendMessage = async () => {
     if (inputText.trim() === '') return;
     const userMessage = { text: inputText, sender: 'user' };
-    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setLoading(true);
 
@@ -25,14 +32,14 @@ function Chat({ onNavigate, onSpeak }) {
       const response = await fetch('http://localhost:5000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: inputText }),
+        body: JSON.stringify({ message: userMessage.text }),
       });
       const data = await response.json();
-      setMessages(prevMessages => [...prevMessages, { text: data.response, sender: 'ai' }]);
+      setMessages(prev => [...prev, { text: data.response, sender: 'ai' }]);
       onSpeak(data.response);
     } catch (error) {
       console.error("Error sending message to AI:", error);
-      setMessages(prevMessages => [...prevMessages, { text: "Error: Could not get a response.", sender: 'ai' }]);
+      setMessages(prev => [...prev, { text: "⚠️ Error: Could not get a response.", sender: 'ai' }]);
       onSpeak("Error: Could not get a response.");
     } finally {
       setLoading(false);
@@ -44,131 +51,149 @@ function Chat({ onNavigate, onSpeak }) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.lang = 'en-IN';
-      recognition.onstart = () => {
-        console.log('Voice recognition started. Speak now!');
-        setInputText('Listening...');
-      };
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInputText(transcript);
-        console.log('Voice input:', transcript);
-      };
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setInputText('Error. Please try again.');
-      };
+      recognition.onstart = () => setInputText('Listening...');
+      recognition.onresult = (event) => setInputText(event.results[0][0].transcript);
+      recognition.onerror = () => setInputText('Error. Please try again.');
       recognition.start();
     } else {
-      alert('Your browser does not support voice input. Please use a text.');
+      alert('Your browser does not support voice input.');
     }
   };
 
-  // New function to handle 'Enter' key press
   const handleKeyDown = (event) => {
-    if (event.key === 'Enter') {
-      handleSendMessage();
-    }
+    if (event.key === 'Enter') handleSendMessage();
   };
 
   return (
     <div style={{
-      padding: '20px',
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
-      backgroundColor: '#333333' // Dark background for contrast
+      background: 'linear-gradient(to bottom right, #E8F5E9, #F4F6F6)',
+      fontFamily: "'Poppins', sans-serif"
     }}>
-      {/* Back button */}
+      {/* Back Button */}
       <button
         onClick={() => onNavigate('home')}
         style={{
           padding: '8px 15px',
           fontSize: '14px',
           border: 'none',
-          backgroundColor: '#555',
+          backgroundColor: '#2E7D32',
           color: 'white',
           borderRadius: '20px',
           cursor: 'pointer',
-          alignSelf: 'flex-start'
-        }}>
-        &larr; Back
+          margin: '10px 15px',
+          alignSelf: 'flex-start',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.15)'
+        }}
+      >
+        ← Back
       </button>
 
-      {/* Chat History Area */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px' }}>
-        {messages.map((msg, index) => (
-          <div key={index} style={{
-            display: 'flex',
-            justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-            margin: '5px 0'
-          }}>
+      {/* Chat History */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '0 15px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
+      }}>
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start'
+            }}
+          >
             <div style={{
-              backgroundColor: msg.sender === 'user' ? '#4CAF50' : '#fff',
-              color: msg.sender === 'user' ? 'white' : 'black',
-              padding: '10px 15px',
-              borderRadius: '20px',
-              maxWidth: '80%',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+              background: msg.sender === 'user'
+                ? 'linear-gradient(135deg, #2E7D32, #66BB6A)'
+                : '#FFFFFF',
+              color: msg.sender === 'user' ? '#fff' : '#333',
+              padding: '12px 16px',
+              borderRadius: '18px',
+              maxWidth: '75%',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              fontSize: '15px',
+              lineHeight: '1.4'
             }}>
               {msg.text}
             </div>
           </div>
         ))}
+
         {loading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', margin: '5px 0' }}>
-            <div style={{ backgroundColor: '#fff', padding: '10px 15px', borderRadius: '20px' }}>
-              Thinking...
-            </div>
+          <div style={{
+            background: '#fff',
+            padding: '10px 15px',
+            borderRadius: '18px',
+            width: 'fit-content',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}>
+            Thinking...
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input and Send Button Area */}
-      <div style={{ display: 'flex', padding: '10px', borderTop: '1px solid #555', backgroundColor: '#444', alignItems: 'center' }}>
+      {/* Input Area */}
+      <div style={{
+        display: 'flex',
+        padding: '12px',
+        background: '#FFFFFF',
+        borderTop: '1px solid #E0E0E0',
+        alignItems: 'center',
+        gap: '10px',
+        boxShadow: '0 -2px 8px rgba(0,0,0,0.05)'
+      }}>
         <input
           type="text"
-          placeholder="Type your question here..."
+          placeholder="Type your question..."
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={handleKeyDown} // Listen for key presses
+          onKeyDown={handleKeyDown}
           style={{
             flex: 1,
-            padding: '10px',
-            fontSize: '16px',
-            border: '1px solid #777',
+            padding: '10px 15px',
+            fontSize: '15px',
             borderRadius: '20px',
-            backgroundColor: '#fff',
-            color: 'black'
+            border: '1px solid #CCC',
+            outline: 'none',
+            transition: 'border 0.2s ease'
           }}
         />
         <button
           onClick={handleVoiceInput}
           style={{
-            marginLeft: '10px',
-            padding: '10px',
-            borderRadius: '50%',
+            background: '#2E7D32',
+            color: '#fff',
             border: 'none',
-            backgroundColor: '#555',
-            color: 'white',
+            borderRadius: '50%',
+            padding: '10px',
             cursor: 'pointer',
-            fontSize: '24px',
-            width: '45px',
-            height: '45px'
-          }}>
-          <FaMicrophone /> {/* The new microphone icon */}
+            fontSize: '18px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}
+        >
+          <FaMicrophone />
         </button>
         <button
           onClick={handleSendMessage}
           style={{
-            marginLeft: '10px',
-            padding: '10px 20px',
-            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #2E7D32, #66BB6A)',
+            color: '#fff',
             border: 'none',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            cursor: 'pointer'
-          }}>
-          Send
+            borderRadius: '50%',
+            padding: '10px',
+            cursor: 'pointer',
+            fontSize: '18px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}
+        >
+          <FaPaperPlane />
         </button>
       </div>
     </div>
