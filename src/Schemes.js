@@ -1,12 +1,21 @@
-import React from 'react';
-import { mockSchemes } from './SchemesData';
+import React, { useEffect, useState } from 'react';
 
 function Schemes({ onNavigate }) {
-  const schemes = mockSchemes;
+  const [schemes, setSchemes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/schemes')
+      .then(res => res.json())
+      .then(data => {
+        setSchemes(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   return (
     <div style={{ padding: '20px' }}>
-      {/* Back button */}
       <button
         onClick={() => onNavigate('home')}
         style={{
@@ -21,11 +30,13 @@ function Schemes({ onNavigate }) {
       </button>
 
       <h1 style={{ textAlign: 'center', margin: '20px 0', color: '#333333' }}>Government Schemes</h1>
-      
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        {schemes.length > 0 ? (
-          schemes.map(scheme => (
-            <div key={scheme.id} style={{
+
+      {loading ? (
+        <p>Loading schemes...</p>
+      ) : schemes.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          {schemes.map(scheme => (
+            <div key={scheme._id} style={{
               padding: '15px',
               backgroundColor: '#fff',
               borderRadius: '10px',
@@ -34,11 +45,11 @@ function Schemes({ onNavigate }) {
               <h4 style={{ margin: '0 0 5px 0', color: '#388E3C' }}>{scheme.title}</h4>
               <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>{scheme.summary}</p>
             </div>
-          ))
-        ) : (
-          <p style={{ textAlign: 'center', color: '#333' }}>No schemes found.</p>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <p style={{ textAlign: 'center', color: '#333' }}>No schemes found.</p>
+      )}
     </div>
   );
 }
