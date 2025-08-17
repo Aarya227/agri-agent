@@ -1,10 +1,21 @@
-const Scheme = require('../models/Scheme');
+const Scheme = require("../models/Scheme");
 
-exports.getSchemes = async (req, res) => {
+
+// Get all schemes (optional: filter by language in query)
+const getSchemes = async (req, res) => {
   try {
-    const schemes = await Scheme.find({});
+    const { language } = req.query;
+    let query = {};
+
+    if (language) {
+      query.language = language;
+    }
+
+    const schemes = await Scheme.find(query);
     res.json(schemes);
-  } catch (err) {
-    res.status(500).json({ error: 'Server Error' });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching schemes", error });
   }
 };
+
+module.exports = { getSchemes };
